@@ -61,4 +61,103 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Uraian pekerjaan wajib diisi.'), findsOneWidget);
   });
+
+  testWidgets('table pagination displays page slices and navigates correctly', (
+    tester,
+  ) async {
+    final storage = _MemoryStorage();
+    storage.tasks = List<TaskModel>.generate(
+      12,
+      (i) => TaskModel(
+        id: 'task-$i',
+        tanggal: DateTime(2026, 8, 1),
+        uraianPekerjaan: 'Tugas ke-$i',
+        keterangan: 'Keterangan $i',
+        pic: 'User',
+        rincianTindakLanjut: const [],
+        status: TaskStatus.pending,
+        prioritas: TaskPriority.medium,
+      ),
+    );
+
+    await tester.pumpWidget(DailyWorkApp(storage: storage));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Menampilkan 1–10 dari 12 tugas'), findsOneWidget);
+    expect(find.text('Hal 1 dari 2'), findsOneWidget);
+    expect(find.text('Tugas ke-0'), findsOneWidget);
+    expect(find.text('Tugas ke-11'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.byTooltip('Halaman berikutnya'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byTooltip('Halaman berikutnya'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Menampilkan 11–12 dari 12 tugas'), findsOneWidget);
+    expect(find.text('Hal 2 dari 2'), findsOneWidget);
+    expect(find.text('Tugas ke-11'), findsOneWidget);
+    expect(find.text('Tugas ke-0'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.byTooltip('Halaman sebelumnya'),
+      -300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byTooltip('Halaman sebelumnya'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Menampilkan 1–10 dari 12 tugas'), findsOneWidget);
+    expect(find.text('Hal 1 dari 2'), findsOneWidget);
+  });
+
+  testWidgets('kanban column paginates cards when exceeding limit', (
+    tester,
+  ) async {
+    final storage = _MemoryStorage();
+    storage.tasks = List<TaskModel>.generate(
+      7,
+      (i) => TaskModel(
+        id: 'k-task-$i',
+        tanggal: DateTime(2026, 8, 1),
+        uraianPekerjaan: 'Kanban Task $i',
+        keterangan: 'Desc $i',
+        pic: 'User',
+        rincianTindakLanjut: const [],
+        status: TaskStatus.pending,
+        prioritas: TaskPriority.medium,
+      ),
+    );
+
+    await tester.pumpWidget(DailyWorkApp(storage: storage));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('kanban-view-button')),
+    );
+    await tester.tap(find.byKey(const ValueKey('kanban-view-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1–5 dari 7'), findsOneWidget);
+    expect(find.text('1/2'), findsOneWidget);
+    expect(find.text('Kanban Task 0'), findsOneWidget);
+    expect(find.text('Kanban Task 6'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.byTooltip('Halaman berikutnya').first,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byTooltip('Halaman berikutnya').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('6–7 dari 7'), findsOneWidget);
+    expect(find.text('2/2'), findsOneWidget);
+    expect(find.text('Kanban Task 6'), findsOneWidget);
+    expect(find.text('Kanban Task 0'), findsNothing);
+  });
 }
+
+

@@ -143,6 +143,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _importCsv() async {
+    try {
+      final tasks = await _fileService.importCsv();
+      if (tasks == null || !mounted) return;
+      final confirmed = await _confirm(
+        title: 'Impor data CSV?',
+        message:
+            '${tasks.length} tugas ditemukan. Data saat ini akan diganti dengan isi file CSV.',
+        confirmLabel: 'Impor CSV',
+      );
+      if (!confirmed || !mounted) return;
+      await context.read<TaskProvider>().replaceAll(tasks);
+      _searchController.clear();
+      if (mounted) {
+        _showMessage('${tasks.length} tugas berhasil diimpor dari CSV.');
+      }
+    } on FormatException catch (error) {
+      if (mounted) _showMessage(error.message, isError: true);
+    } catch (_) {
+      if (mounted) _showMessage('Impor CSV gagal.', isError: true);
+    }
+  }
+
   Future<void> _loadSamples() async {
     final provider = context.read<TaskProvider>();
     if (provider.tasks.isNotEmpty) {
@@ -269,6 +292,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _DashboardHeader(
                         onAdd: () => _openTaskForm(),
                         onExportCsv: _exportCsv,
+                        onImportCsv: _importCsv,
                         onExportJson: _exportJson,
                         onImportJson: _importJson,
                         onLoadSamples: _loadSamples,
@@ -329,6 +353,7 @@ class _DashboardHeader extends StatelessWidget {
   const _DashboardHeader({
     required this.onAdd,
     required this.onExportCsv,
+    required this.onImportCsv,
     required this.onExportJson,
     required this.onImportJson,
     required this.onLoadSamples,
@@ -337,6 +362,7 @@ class _DashboardHeader extends StatelessWidget {
 
   final VoidCallback onAdd;
   final VoidCallback onExportCsv;
+  final VoidCallback onImportCsv;
   final VoidCallback onExportJson;
   final VoidCallback onImportJson;
   final VoidCallback onLoadSamples;
@@ -410,6 +436,8 @@ class _DashboardHeader extends StatelessWidget {
                   switch (value) {
                     case 'csv':
                       onExportCsv();
+                    case 'import-csv':
+                      onImportCsv();
                     case 'json':
                       onExportJson();
                     case 'import':
@@ -428,6 +456,14 @@ class _DashboardHeader extends StatelessWidget {
                       label: 'Ekspor CSV',
                     ),
                   ),
+                  PopupMenuItem<String>(
+                    value: 'import-csv',
+                    child: _HeaderMenuItem(
+                      icon: FontAwesomeIcons.fileImport,
+                      label: 'Impor CSV',
+                    ),
+                  ),
+                  PopupMenuDivider(),
                   PopupMenuItem<String>(
                     value: 'json',
                     child: _HeaderMenuItem(

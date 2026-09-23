@@ -7,7 +7,7 @@ import '../models/task_model.dart';
 import 'task_progress.dart';
 import 'task_visuals.dart';
 
-class TaskTableView extends StatelessWidget {
+class TaskTableView extends StatefulWidget {
   const TaskTableView({
     super.key,
     required this.tasks,
@@ -24,7 +24,71 @@ class TaskTableView extends StatelessWidget {
   final void Function(TaskModel task, int index) onSubTaskToggle;
 
   @override
+  State<TaskTableView> createState() => _TaskTableViewState();
+}
+
+class _TaskTableViewState extends State<TaskTableView> {
+  int _currentPage = 0;
+  int _pageSize = 10;
+  static const List<int> _pageSizeOptions = <int>[5, 10, 25, 50];
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant TaskTableView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final total = widget.tasks.length;
+    final maxPage = total == 0 ? 0 : (total - 1) ~/ _pageSize;
+    if (_currentPage > maxPage) {
+      setState(() {
+        _currentPage = maxPage;
+      });
+    }
+  }
+
+  void _setPageSize(int newSize) {
+    setState(() {
+      _pageSize = newSize;
+      final maxPage = widget.tasks.isEmpty ? 0 : (widget.tasks.length - 1) ~/ newSize;
+      if (_currentPage > maxPage) {
+        _currentPage = maxPage;
+      }
+    });
+  }
+
+  void _goToPage(int page) {
+    final total = widget.tasks.length;
+    final maxPage = total == 0 ? 0 : (total - 1) ~/ _pageSize;
+    final target = page.clamp(0, maxPage);
+    if (target != _currentPage) {
+      setState(() {
+        _currentPage = target;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final totalTasks = widget.tasks.length;
+    final totalPages = totalTasks == 0 ? 1 : ((totalTasks - 1) ~/ _pageSize) + 1;
+    final safePage = _currentPage.clamp(0, totalPages - 1);
+    final startIndex = totalTasks == 0 ? 0 : safePage * _pageSize;
+    final endIndex = (startIndex + _pageSize > totalTasks) ? totalTasks : startIndex + _pageSize;
+    final pageTasks = totalTasks == 0
+        ? const <TaskModel>[]
+        : widget.tasks.sublist(startIndex, endIndex);
+
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -53,7 +117,7 @@ class TaskTableView extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${tasks.length} tugas',
+                  '$totalTasks tugas',
                   style: const TextStyle(
                     color: Color(0xFFBFDBFE),
                     fontSize: 12,
@@ -63,12 +127,14 @@ class TaskTableView extends StatelessWidget {
               ],
             ),
           ),
-          if (tasks.isEmpty)
+          if (totalTasks == 0)
             const _EmptyTable()
-          else
+          else ...<Widget>[
             Scrollbar(
+              controller: _scrollController,
               thumbVisibility: false,
               child: SingleChildScrollView(
+                controller: _scrollController,
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
                   headingRowColor: WidgetStateProperty.all(AppColors.slate100),
@@ -95,10 +161,26 @@ class TaskTableView extends StatelessWidget {
                     DataColumn(label: Text('STATUS')),
                     DataColumn(label: Text('AKSI')),
                   ],
-                  rows: tasks.map((task) => _buildRow(context, task)).toList(),
+                  rows: pageTasks.map((task) => _buildRow(context, task)).toList(),
                 ),
               ),
             ),
+            const Divider(height: 1),
+            _PaginationFooter(
+              totalTasks: totalTasks,
+              startIndex: startIndex,
+              endIndex: endIndex,
+              currentPage: safePage,
+              totalPages: totalPages,
+              pageSize: _pageSize,
+              pageSizeOptions: _pageSizeOptions,
+              onPageSizeChanged: _setPageSize,
+              onFirstPage: safePage > 0 ? () => _goToPage(0) : null,
+              onPreviousPage: safePage > 0 ? () => _goToPage(safePage - 1) : null,
+              onNextPage: safePage < totalPages - 1 ? () => _goToPage(safePage + 1) : null,
+              onLastPage: safePage < totalPages - 1 ? () => _goToPage(totalPages - 1) : null,
+            ),
+          ],
         ],
       ),
     );
@@ -210,7 +292,7 @@ class TaskTableView extends StatelessWidget {
                       (entry) => _SubTaskLine(
                         text: entry.value.text,
                         isCompleted: entry.value.isCompleted,
-                        onTap: () => onSubTaskToggle(task, entry.key),
+                        onTap: () => widget.onSubTaskToggle(task, entry.key),
                       ),
                     ),
                 if (task.rincianTindakLanjut.length > 2)
@@ -233,7 +315,7 @@ class TaskTableView extends StatelessWidget {
         DataCell(
           PopupMenuButton<TaskStatus>(
             tooltip: 'Ubah status',
-            onSelected: (status) => onStatusChanged(task, status),
+            onSelected: (status) => widget.onStatusChanged(task, status),
             itemBuilder: (context) => TaskStatus.values
                 .map(
                   (status) => PopupMenuItem<TaskStatus>(
@@ -253,14 +335,14 @@ class TaskTableView extends StatelessWidget {
                 tooltip: 'Edit tugas',
                 icon: FontAwesomeIcons.penToSquare,
                 color: AppColors.royalBlue,
-                onTap: () => onEdit(task),
+                onTap: () => widget.onEdit(task),
               ),
               const SizedBox(width: 6),
               _ActionButton(
                 tooltip: 'Hapus tugas',
                 icon: FontAwesomeIcons.trashCan,
                 color: AppColors.danger,
-                onTap: () => onDelete(task),
+                onTap: () => widget.onDelete(task),
               ),
             ],
           ),
@@ -269,6 +351,223 @@ class TaskTableView extends StatelessWidget {
     );
   }
 }
+
+class _PaginationFooter extends StatelessWidget {
+  const _PaginationFooter({
+    required this.totalTasks,
+    required this.startIndex,
+    required this.endIndex,
+    required this.currentPage,
+    required this.totalPages,
+    required this.pageSize,
+    required this.pageSizeOptions,
+    required this.onPageSizeChanged,
+    required this.onFirstPage,
+    required this.onPreviousPage,
+    required this.onNextPage,
+    required this.onLastPage,
+  });
+
+  final int totalTasks;
+  final int startIndex;
+  final int endIndex;
+  final int currentPage;
+  final int totalPages;
+  final int pageSize;
+  final List<int> pageSizeOptions;
+  final ValueChanged<int> onPageSizeChanged;
+  final VoidCallback? onFirstPage;
+  final VoidCallback? onPreviousPage;
+  final VoidCallback? onNextPage;
+  final VoidCallback? onLastPage;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final infoText = Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const FaIcon(
+                FontAwesomeIcons.barsStaggered,
+                size: 11,
+                color: AppColors.slate400,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Menampilkan ${startIndex + 1}–$endIndex dari $totalTasks tugas',
+                style: const TextStyle(
+                  color: AppColors.slate600,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          );
+
+          final controls = Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
+            children: <Widget>[
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  const Text(
+                    'Baris:',
+                    style: TextStyle(
+                      color: AppColors.slate500,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.slate50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.slate200),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: pageSize,
+                        isDense: true,
+                        icon: const FaIcon(
+                          FontAwesomeIcons.chevronDown,
+                          size: 10,
+                          color: AppColors.slate500,
+                        ),
+                        items: pageSizeOptions
+                            .map(
+                              (size) => DropdownMenuItem<int>(
+                                value: size,
+                                child: Text(
+                                  size.toString(),
+                                  style: const TextStyle(
+                                    color: AppColors.slate900,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value != null) onPageSizeChanged(value);
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                height: 16,
+                width: 1,
+                color: AppColors.slate200,
+              ),
+              Text(
+                'Hal ${currentPage + 1} dari $totalPages',
+                style: const TextStyle(
+                  color: AppColors.slate700,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  _PaginationButton(
+                    tooltip: 'Halaman pertama',
+                    icon: FontAwesomeIcons.anglesLeft,
+                    onPressed: onFirstPage,
+                  ),
+                  const SizedBox(width: 4),
+                  _PaginationButton(
+                    tooltip: 'Halaman sebelumnya',
+                    icon: FontAwesomeIcons.chevronLeft,
+                    onPressed: onPreviousPage,
+                  ),
+                  const SizedBox(width: 4),
+                  _PaginationButton(
+                    tooltip: 'Halaman berikutnya',
+                    icon: FontAwesomeIcons.chevronRight,
+                    onPressed: onNextPage,
+                  ),
+                  const SizedBox(width: 4),
+                  _PaginationButton(
+                    tooltip: 'Halaman terakhir',
+                    icon: FontAwesomeIcons.anglesRight,
+                    onPressed: onLastPage,
+                  ),
+                ],
+              ),
+            ],
+          );
+
+          return SizedBox(
+            width: double.infinity,
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 16,
+              runSpacing: 10,
+              children: <Widget>[
+                infoText,
+                controls,
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PaginationButton extends StatelessWidget {
+  const _PaginationButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final FaIconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(7),
+        child: Container(
+          width: 30,
+          height: 30,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: enabled ? AppColors.white : AppColors.slate100.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(
+              color: enabled ? AppColors.slate300 : AppColors.slate200,
+            ),
+          ),
+          child: FaIcon(
+            icon,
+            size: 10,
+            color: enabled ? AppColors.slate700 : AppColors.slate300,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 class _SubTaskLine extends StatelessWidget {
   const _SubTaskLine({

@@ -18,8 +18,11 @@ extension TaskStatusX on TaskStatus {
   };
 
   static TaskStatus fromKey(String? value) {
+    final clean = value?.trim().toLowerCase();
     return TaskStatus.values.firstWhere(
-      (status) => status.key == value || status.label == value,
+      (status) =>
+          status.key.toLowerCase() == clean ||
+          status.label.toLowerCase() == clean,
       orElse: () => TaskStatus.pending,
     );
   }
@@ -41,8 +44,11 @@ extension TaskPriorityX on TaskPriority {
   };
 
   static TaskPriority fromKey(String? value) {
+    final clean = value?.trim().toLowerCase();
     return TaskPriority.values.firstWhere(
-      (priority) => priority.key == value || priority.label == value,
+      (priority) =>
+          priority.key.toLowerCase() == clean ||
+          priority.label.toLowerCase() == clean,
       orElse: () => TaskPriority.medium,
     );
   }

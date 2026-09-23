@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:daily_work_2026_manager/models/sub_task_model.dart';
 import 'package:daily_work_2026_manager/models/task_model.dart';
 import 'package:daily_work_2026_manager/providers/task_provider.dart';
+import 'package:daily_work_2026_manager/services/task_file_service.dart';
 import 'package:daily_work_2026_manager/services/task_storage_service.dart';
 
 class _MemoryStorage implements TaskStorage {
@@ -78,5 +79,27 @@ void main() {
     expect(restored.status, original.status);
     expect(restored.prioritas, original.prioritas);
     expect(restored.rincianTindakLanjut[0].isCompleted, isTrue);
+  });
+
+  test('task CSV parse restores fields and sub-tasks properly', () {
+    const csvContent =
+        'Tanggal,Uraian Pekerjaan,Keterangan,PIC,Rincian Tindak Lanjut,Status,Prioritas,Progress\r\n'
+        '2026-08-05,Koordinasi Rapat,Rapat pimpinan,Budi,[x] Siapkan materi | [ ] Kirim undangan,Dalam Proses,Tinggi,1/2 (50%)';
+
+    const service = TaskFileService();
+    final tasks = service.parseCsvData(csvContent);
+
+    expect(tasks.length, 1);
+    final task = tasks.first;
+    expect(task.uraianPekerjaan, 'Koordinasi Rapat');
+    expect(task.keterangan, 'Rapat pimpinan');
+    expect(task.pic, 'Budi');
+    expect(task.status, TaskStatus.inProgress);
+    expect(task.prioritas, TaskPriority.high);
+    expect(task.rincianTindakLanjut.length, 2);
+    expect(task.rincianTindakLanjut[0].text, 'Siapkan materi');
+    expect(task.rincianTindakLanjut[0].isCompleted, isTrue);
+    expect(task.rincianTindakLanjut[1].text, 'Kirim undangan');
+    expect(task.rincianTindakLanjut[1].isCompleted, isFalse);
   });
 }

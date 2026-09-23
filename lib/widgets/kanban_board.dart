@@ -7,7 +7,7 @@ import '../models/task_model.dart';
 import 'task_progress.dart';
 import 'task_visuals.dart';
 
-class KanbanBoard extends StatelessWidget {
+class KanbanBoard extends StatefulWidget {
   const KanbanBoard({
     super.key,
     required this.tasks,
@@ -24,50 +24,202 @@ class KanbanBoard extends StatelessWidget {
   final void Function(TaskModel task, int index) onSubTaskToggle;
 
   @override
+  State<KanbanBoard> createState() => _KanbanBoardState();
+}
+
+class _KanbanBoardState extends State<KanbanBoard> {
+  late final ScrollController _scrollController;
+  int _cardsPerColumn = 5;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final available = constraints.maxWidth;
-        final columnWidth = available >= 1280 ? (available - 36) / 4 : 310.0;
-        return Scrollbar(
-          thumbVisibility: false,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: TaskStatus.values.map((status) {
-                final columnTasks = tasks
-                    .where((task) => task.status == status)
-                    .toList();
-                return Padding(
-                  padding: EdgeInsets.only(
-                    right: status == TaskStatus.completed ? 0 : 12,
-                  ),
-                  child: SizedBox(
-                    width: columnWidth,
-                    child: _KanbanColumn(
-                      status: status,
-                      tasks: columnTasks,
-                      onEdit: onEdit,
-                      onDelete: onDelete,
-                      onStatusChanged: onStatusChanged,
-                      onSubTaskToggle: onSubTaskToggle,
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.slate200),
           ),
-        );
-      },
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDBEAFE),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const FaIcon(
+                  FontAwesomeIcons.tableColumns,
+                  size: 13,
+                  color: AppColors.royalBlue,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const Text(
+                      'Papan Kanban Alur Kerja',
+                      style: TextStyle(
+                        color: AppColors.slate900,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      '${widget.tasks.length} tugas terbagi dalam 4 status',
+                      style: const TextStyle(
+                        color: AppColors.slate500,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Text(
+                'Batas kolom:',
+                style: TextStyle(
+                  color: AppColors.slate600,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.slate50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.slate200),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: _cardsPerColumn,
+                    isDense: true,
+                    icon: const FaIcon(
+                      FontAwesomeIcons.chevronDown,
+                      size: 10,
+                      color: AppColors.slate500,
+                    ),
+                    items: const <DropdownMenuItem<int>>[
+                      DropdownMenuItem<int>(
+                        value: 5,
+                        child: Text(
+                          '5 kartu / status',
+                          style: TextStyle(
+                            color: AppColors.slate900,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      DropdownMenuItem<int>(
+                        value: 10,
+                        child: Text(
+                          '10 kartu / status',
+                          style: TextStyle(
+                            color: AppColors.slate900,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      DropdownMenuItem<int>(
+                        value: 0,
+                        child: Text(
+                          'Tampilkan semua',
+                          style: TextStyle(
+                            color: AppColors.slate900,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _cardsPerColumn = value);
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final available = constraints.maxWidth;
+            final columnWidth = available >= 1280
+                ? (available - 36) / 4
+                : 310.0;
+            return Scrollbar(
+              controller: _scrollController,
+              thumbVisibility: false,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: TaskStatus.values.map((status) {
+                    final columnTasks = widget.tasks
+                        .where((task) => task.status == status)
+                        .toList();
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        right: status == TaskStatus.completed ? 0 : 12,
+                      ),
+                      child: SizedBox(
+                        width: columnWidth,
+                        child: _KanbanColumn(
+                          status: status,
+                          tasks: columnTasks,
+                          cardsPerPage: _cardsPerColumn,
+                          onEdit: widget.onEdit,
+                          onDelete: widget.onDelete,
+                          onStatusChanged: widget.onStatusChanged,
+                          onSubTaskToggle: widget.onSubTaskToggle,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }
 
-class _KanbanColumn extends StatelessWidget {
+class _KanbanColumn extends StatefulWidget {
   const _KanbanColumn({
     required this.status,
     required this.tasks,
+    required this.cardsPerPage,
     required this.onEdit,
     required this.onDelete,
     required this.onStatusChanged,
@@ -76,14 +228,53 @@ class _KanbanColumn extends StatelessWidget {
 
   final TaskStatus status;
   final List<TaskModel> tasks;
+  final int cardsPerPage;
   final ValueChanged<TaskModel> onEdit;
   final ValueChanged<TaskModel> onDelete;
   final void Function(TaskModel task, TaskStatus status) onStatusChanged;
   final void Function(TaskModel task, int index) onSubTaskToggle;
 
   @override
+  State<_KanbanColumn> createState() => _KanbanColumnState();
+}
+
+class _KanbanColumnState extends State<_KanbanColumn> {
+  int _page = 0;
+
+  @override
+  void didUpdateWidget(covariant _KanbanColumn oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.cardsPerPage > 0 && widget.tasks.isNotEmpty) {
+      final maxPage = (widget.tasks.length - 1) ~/ widget.cardsPerPage;
+      if (_page > maxPage) {
+        setState(() => _page = maxPage);
+      }
+    } else {
+      if (_page != 0) {
+        setState(() => _page = 0);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final color = statusColor(status);
+    final color = statusColor(widget.status);
+    final totalTasks = widget.tasks.length;
+    final isPaged = widget.cardsPerPage > 0 && totalTasks > widget.cardsPerPage;
+    final totalPages = isPaged
+        ? ((totalTasks - 1) ~/ widget.cardsPerPage) + 1
+        : 1;
+    final safePage = isPaged ? _page.clamp(0, totalPages - 1) : 0;
+    final startIndex = isPaged ? safePage * widget.cardsPerPage : 0;
+    final endIndex = isPaged
+        ? (startIndex + widget.cardsPerPage > totalTasks
+              ? totalTasks
+              : startIndex + widget.cardsPerPage)
+        : totalTasks;
+    final displayedTasks = totalTasks == 0
+        ? const <TaskModel>[]
+        : widget.tasks.sublist(startIndex, endIndex);
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.slate100,
@@ -109,15 +300,19 @@ class _KanbanColumn extends StatelessWidget {
                   height: 32,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: statusSoftColor(status),
+                    color: statusSoftColor(widget.status),
                     borderRadius: BorderRadius.circular(9),
                   ),
-                  child: FaIcon(statusIcon(status), size: 13, color: color),
+                  child: FaIcon(
+                    statusIcon(widget.status),
+                    size: 13,
+                    color: color,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    status.label,
+                    widget.status.label,
                     style: const TextStyle(
                       color: AppColors.slate900,
                       fontWeight: FontWeight.w800,
@@ -130,11 +325,11 @@ class _KanbanColumn extends StatelessWidget {
                     vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    color: statusSoftColor(status),
+                    color: statusSoftColor(widget.status),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    tasks.length.toString(),
+                    totalTasks.toString(),
                     style: TextStyle(
                       color: color,
                       fontSize: 11,
@@ -147,28 +342,130 @@ class _KanbanColumn extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.all(10),
-            child: tasks.isEmpty
-                ? _EmptyColumn(status: status)
+            child: totalTasks == 0
+                ? _EmptyColumn(status: widget.status)
                 : Column(
-                    children: tasks
-                        .map(
-                          (task) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _KanbanCard(
-                              task: task,
-                              onEdit: () => onEdit(task),
-                              onDelete: () => onDelete(task),
-                              onStatusChanged: (value) =>
-                                  onStatusChanged(task, value),
-                              onSubTaskToggle: (index) =>
-                                  onSubTaskToggle(task, index),
-                            ),
+                    children: <Widget>[
+                      ...displayedTasks.map(
+                        (task) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _KanbanCard(
+                            task: task,
+                            onEdit: () => widget.onEdit(task),
+                            onDelete: () => widget.onDelete(task),
+                            onStatusChanged: (value) =>
+                                widget.onStatusChanged(task, value),
+                            onSubTaskToggle: (index) =>
+                                widget.onSubTaskToggle(task, index),
                           ),
-                        )
-                        .toList(),
+                        ),
+                      ),
+                      if (isPaged)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.slate200),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: <Widget>[
+                              Text(
+                                '${startIndex + 1}–$endIndex dari $totalTasks',
+                                style: const TextStyle(
+                                  color: AppColors.slate500,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  _MiniColumnPageButton(
+                                    tooltip: 'Halaman sebelumnya',
+                                    icon: FontAwesomeIcons.chevronLeft,
+                                    onPressed: safePage > 0
+                                        ? () => setState(
+                                            () => _page = safePage - 1,
+                                          )
+                                        : null,
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                    ),
+                                    child: Text(
+                                      '${safePage + 1}/$totalPages',
+                                      style: const TextStyle(
+                                        color: AppColors.slate700,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  _MiniColumnPageButton(
+                                    tooltip: 'Halaman berikutnya',
+                                    icon: FontAwesomeIcons.chevronRight,
+                                    onPressed: safePage < totalPages - 1
+                                        ? () => setState(
+                                            () => _page = safePage + 1,
+                                          )
+                                        : null,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MiniColumnPageButton extends StatelessWidget {
+  const _MiniColumnPageButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final FaIconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          width: 24,
+          height: 24,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: enabled ? AppColors.white : AppColors.slate100,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: enabled ? AppColors.slate300 : AppColors.slate200,
+            ),
+          ),
+          child: FaIcon(
+            icon,
+            size: 9,
+            color: enabled ? AppColors.slate700 : AppColors.slate300,
+          ),
+        ),
       ),
     );
   }
