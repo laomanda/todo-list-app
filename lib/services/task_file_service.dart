@@ -14,7 +14,7 @@ class TaskFileService {
 
   Future<bool> exportJson(List<TaskModel> tasks) async {
     final payload = <String, dynamic>{
-      'application': 'todo list jakkob',
+      'application': 'Todo List Jakkob',
       'version': 1,
       'exportedAt': DateTime.now().toIso8601String(),
       'tasks': tasks.map((task) => task.toJson()).toList(),
@@ -71,7 +71,7 @@ class TaskFileService {
 
   Future<List<TaskModel>?> importJson() async {
     final result = await FilePicker.pickFiles(
-      dialogTitle: 'Pilih backup todo list jakkob',
+      dialogTitle: 'Pilih backup Todo List Jakkob',
       type: FileType.custom,
       allowedExtensions: const <String>['json'],
       withData: true,
@@ -108,7 +108,7 @@ class TaskFileService {
 
   Future<List<TaskModel>?> importCsv() async {
     final result = await FilePicker.pickFiles(
-      dialogTitle: 'Pilih file CSV todo list jakkob',
+      dialogTitle: 'Pilih file CSV Todo List Jakkob',
       type: FileType.custom,
       allowedExtensions: const <String>['csv'],
       withData: true,
@@ -315,7 +315,7 @@ class TaskFileService {
     required Uint8List bytes,
   }) async {
     final path = await FilePicker.saveFile(
-      dialogTitle: 'Simpan file todo list jakkob',
+      dialogTitle: 'Simpan file Todo List Jakkob',
       fileName: fileName,
       type: FileType.custom,
       allowedExtensions: <String>[extension],

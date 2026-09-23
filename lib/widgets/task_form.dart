@@ -10,11 +10,15 @@ class TaskForm extends StatefulWidget {
   const TaskForm({
     super.key,
     this.initialTask,
+    this.initialDate,
+    this.existingPics = const <String>[],
     required this.onSubmit,
     required this.onCancel,
   });
 
   final TaskModel? initialTask;
+  final DateTime? initialDate;
+  final List<String> existingPics;
   final ValueChanged<TaskModel> onSubmit;
   final VoidCallback onCancel;
 
@@ -42,7 +46,7 @@ class _TaskFormState extends State<TaskForm> {
     _titleController = TextEditingController(text: task?.uraianPekerjaan ?? '');
     _notesController = TextEditingController(text: task?.keterangan ?? '');
     _picController = TextEditingController(text: task?.pic ?? '');
-    _date = dateOnly(task?.tanggal ?? DateTime.now());
+    _date = dateOnly(task?.tanggal ?? widget.initialDate ?? DateTime.now());
     _dateController = TextEditingController(text: toDateKey(_date));
     _status = task?.status ?? TaskStatus.pending;
     _priority = task?.prioritas ?? TaskPriority.medium;
@@ -250,12 +254,215 @@ class _TaskFormState extends State<TaskForm> {
                           final picField = _FormBlock(
                             label: 'PIC',
                             icon: FontAwesomeIcons.user,
-                            child: TextFormField(
-                              controller: _picController,
-                              textCapitalization: TextCapitalization.words,
-                              decoration: const InputDecoration(
-                                hintText: 'Nama penanggung jawab',
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                TextFormField(
+                                  key: const ValueKey('task-pic-field'),
+                                  controller: _picController,
+                                  textCapitalization: TextCapitalization.words,
+                                   decoration: InputDecoration(
+                                     hintText: 'Nama penanggung jawab',
+                                     suffixIcon:
+                                         ValueListenableBuilder<TextEditingValue>(
+                                       valueListenable: _picController,
+                                       builder: (context, value, _) {
+                                         final hasText = value.text.isNotEmpty;
+                                         final hasPics =
+                                             widget.existingPics.isNotEmpty;
+                                         if (!hasText && !hasPics) {
+                                           return const SizedBox.shrink();
+                                         }
+                                         return Row(
+                                           mainAxisSize: MainAxisSize.min,
+                                           children: <Widget>[
+                                             if (hasText)
+                                               IconButton(
+                                                 tooltip: 'Hapus nama',
+                                                 icon: const FaIcon(
+                                                   FontAwesomeIcons.xmark,
+                                                   size: 13,
+                                                   color: AppColors.slate400,
+                                                 ),
+                                                 onPressed:
+                                                     _picController.clear,
+                                               ),
+                                             if (hasPics)
+                                               PopupMenuButton<String>(
+                                                 tooltip: 'Pilih dari daftar PIC',
+                                                 icon: const FaIcon(
+                                                   FontAwesomeIcons.chevronDown,
+                                                   size: 12,
+                                                   color: AppColors.royalBlue,
+                                                 ),
+                                                 onSelected: (pic) {
+                                                   _picController.text = pic;
+                                                   _picController.selection =
+                                                       TextSelection.fromPosition(
+                                                     TextPosition(
+                                                       offset: pic.length,
+                                                     ),
+                                                   );
+                                                 },
+                                                 itemBuilder: (context) => widget
+                                                     .existingPics
+                                                     .map(
+                                                       (pic) =>
+                                                           PopupMenuItem<String>(
+                                                         value: pic,
+                                                         child: Row(
+                                                           children: <Widget>[
+                                                             Container(
+                                                               width: 26,
+                                                               height: 26,
+                                                               alignment:
+                                                                   Alignment
+                                                                       .center,
+                                                               decoration:
+                                                                   const BoxDecoration(
+                                                                 color: Color(
+                                                                   0xFFDBEAFE,
+                                                                 ),
+                                                                 shape: BoxShape
+                                                                     .circle,
+                                                               ),
+                                                               child:
+                                                                   const FaIcon(
+                                                                 FontAwesomeIcons
+                                                                     .user,
+                                                                 size: 10,
+                                                                 color: AppColors
+                                                                     .royalBlue,
+                                                               ),
+                                                             ),
+                                                             const SizedBox(
+                                                               width: 9,
+                                                             ),
+                                                             Text(
+                                                               pic,
+                                                               style: TextStyle(
+                                                                 fontWeight:
+                                                                     value.text
+                                                                                 .trim() ==
+                                                                             pic
+                                                                         ? FontWeight
+                                                                               .w800
+                                                                         : FontWeight
+                                                                               .w600,
+                                                                 color:
+                                                                     value.text
+                                                                                 .trim() ==
+                                                                             pic
+                                                                         ? AppColors
+                                                                               .royalBlue
+                                                                         : AppColors
+                                                                               .slate700,
+                                                               ),
+                                                             ),
+                                                           ],
+                                                         ),
+                                                       ),
+                                                     )
+                                                     .toList(),
+                                               ),
+                                           ],
+                                         );
+                                       },
+                                     ),
+                                   ),
+                                 ),
+                                 if (widget.existingPics.isNotEmpty) ...<Widget>[
+                                   const SizedBox(height: 7),
+                                   ValueListenableBuilder<TextEditingValue>(
+                                     valueListenable: _picController,
+                                     builder: (context, value, _) {
+                                       return Wrap(
+                                         spacing: 6,
+                                         runSpacing: 6,
+                                         crossAxisAlignment:
+                                             WrapCrossAlignment.center,
+                                         children: <Widget>[
+                                           const Text(
+                                             'Pilih cepat:',
+                                             style: TextStyle(
+                                               color: AppColors.slate500,
+                                               fontSize: 11,
+                                               fontWeight: FontWeight.w600,
+                                             ),
+                                           ),
+                                           ...widget.existingPics
+                                               .take(6)
+                                               .map((pic) {
+                                             final isSelected =
+                                                 value.text.trim() == pic;
+                                             return InkWell(
+                                               onTap: () {
+                                                 _picController.text = pic;
+                                                 _picController.selection =
+                                                     TextSelection.fromPosition(
+                                                   TextPosition(
+                                                     offset: pic.length,
+                                                   ),
+                                                 );
+                                               },
+                                               borderRadius:
+                                                   BorderRadius.circular(6),
+                                               child: Container(
+                                                 padding:
+                                                     const EdgeInsets.symmetric(
+                                                   horizontal: 8,
+                                                   vertical: 4,
+                                                 ),
+                                                 decoration: BoxDecoration(
+                                                   color: isSelected
+                                                       ? const Color(0xFFDBEAFE)
+                                                       : AppColors.slate100,
+                                                   borderRadius:
+                                                       BorderRadius.circular(6),
+                                                   border: Border.all(
+                                                     color: isSelected
+                                                         ? AppColors.royalBlue
+                                                         : AppColors.slate200,
+                                                   ),
+                                                 ),
+                                                 child: Row(
+                                                   mainAxisSize:
+                                                       MainAxisSize.min,
+                                                   children: <Widget>[
+                                                     FaIcon(
+                                                       FontAwesomeIcons.user,
+                                                       size: 9,
+                                                       color: isSelected
+                                                           ? AppColors.royalBlue
+                                                           : AppColors.slate500,
+                                                     ),
+                                                     const SizedBox(width: 5),
+                                                     Text(
+                                                       pic,
+                                                       style: TextStyle(
+                                                         fontSize: 11,
+                                                         fontWeight: isSelected
+                                                             ? FontWeight.w800
+                                                             : FontWeight.w600,
+                                                         color: isSelected
+                                                             ? AppColors
+                                                                   .royalBlue
+                                                             : AppColors
+                                                                   .slate700,
+                                                       ),
+                                                     ),
+                                                   ],
+                                                 ),
+                                               ),
+                                             );
+                                           }),
+                                         ],
+                                       );
+                                     },
+                                   ),
+                                 ],
+                              ],
                             ),
                           );
                           if (compact) {

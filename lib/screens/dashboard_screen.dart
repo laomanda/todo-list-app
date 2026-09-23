@@ -8,6 +8,7 @@ import '../providers/task_provider.dart';
 import '../services/task_file_service.dart';
 import '../widgets/filter_toolbar.dart';
 import '../widgets/kanban_board.dart';
+import '../widgets/productivity_chart.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/task_form.dart';
 import '../widgets/task_table_view.dart';
@@ -29,10 +30,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
-  Future<void> _openTaskForm([TaskModel? task]) async {
+  Future<void> _openTaskForm([TaskModel? task, DateTime? initialDate]) async {
     if (!mounted) return;
     final media = MediaQuery.of(context);
     final isCompact = media.size.width < 720;
+    final provider = context.read<TaskProvider>();
+    final pics = provider.pics;
     final result = isCompact
         ? await showModalBottomSheet<TaskModel>(
             // ignore: use_build_context_synchronously
@@ -48,6 +51,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 height: MediaQuery.sizeOf(sheetContext).height * 0.94,
                 child: TaskForm(
                   initialTask: task,
+                  initialDate: initialDate,
+                  existingPics: pics,
                   onSubmit: (value) => Navigator.pop(sheetContext, value),
                   onCancel: () => Navigator.pop(sheetContext),
                 ),
@@ -70,6 +75,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   borderRadius: BorderRadius.circular(20),
                   child: TaskForm(
                     initialTask: task,
+                    initialDate: initialDate,
+                    existingPics: pics,
                     onSubmit: (value) => Navigator.pop(dialogContext, value),
                     onCancel: () => Navigator.pop(dialogContext),
                   ),
@@ -79,7 +86,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           );
 
     if (result == null || !mounted) return;
-    final provider = context.read<TaskProvider>();
     if (task == null) {
       await provider.addTask(result);
       if (mounted) _showMessage('Tugas baru berhasil ditambahkan.');
@@ -305,6 +311,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 18),
                       _Statistics(provider: provider),
                       const SizedBox(height: 18),
+                      ProductivityChart(
+                        tasks: provider.tasks,
+                        onAddTaskForDate: (date) => _openTaskForm(null, date),
+                      ),
+                      const SizedBox(height: 18),
                       FilterToolbar(
                         searchController: _searchController,
                         provider: provider,
@@ -403,7 +414,7 @@ class _DashboardHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      'todo list jakkob',
+                      'Todo List Jakkob',
                       style: TextStyle(
                         color: AppColors.white,
                         fontSize: 21,

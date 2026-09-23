@@ -22,7 +22,7 @@ class DailyWorkApp extends StatelessWidget {
       create: (_) =>
           TaskProvider(storage ?? TaskStorageService())..initialize(),
       child: MaterialApp(
-        title: 'todo list jakkob',
+        title: 'Todo List Jakkob',
         debugShowCheckedModeBanner: false,
         theme: _buildTheme(),
         home: const DashboardScreen(),

@@ -1,11 +1,11 @@
 {
-    "name": "todo list jakkob",
-    "short_name": "todo list jakkob",
+    "name": "Todo List Jakkob",
+    "short_name": "Todo List Jakkob",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "todo list jakkob",
+    "description": "Todo List Jakkob",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
